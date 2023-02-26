@@ -1,6 +1,6 @@
 ---
 title: Rāga Lakshaṇās
-layout: Post
+layout: post
 ---
 
 ## Malahari
@@ -13,4 +13,5 @@ Compositions begin on the notes Ri, Ma, Pa and Da. Examples,
 2. Ma – Srigaṇanātha (m p d ṡ ṡ ṙ)
 3. Da – Kundagaura (d p m g r s), Kerayaniranu (d ṡ ṡ d p m p)
 4. Pa – Panchamatanga (P d m p; d p m g r s)
+
 **Note**:  Piḷḷāri gitās,  gitās meant for children or beginners of music. Piḷḷāri literally means children in Telugu. The name of the  rāga Malahari has undergone change like Malahara, Malahari, Malhār and Mallār. Regarding the practical use of the rāga, we should be grateful for Purandaradāsa (the Sangeeta Pitāmaha) who has composed the piḷḷāri gitās. It is a traditional habit in Hindu culture to get the blessings of Lord Vināyaka primarily for successful completion in all our ventures.  Purandaradāsa composed four gitās in Malahari, and the first is in the praise of Lord Gaṇapathi. The other three are on Sri Vishnu, Shiva and 
