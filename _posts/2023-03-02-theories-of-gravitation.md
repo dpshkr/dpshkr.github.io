@@ -1,9 +1,16 @@
 ---
-title: Historic Theories of Gravitation
+title: Ancient theories on planetary motion and gravitation
 layout: post
 ---
 
 In this post we will discuss some ancient theories of graviation.
+
+Bhaskaracharya Surya Sinddhanta 
+
+> पश्चाद् वज्रन्तोऽतिजवान्नक्षत्रैः सततं ग्रहाः । \
+> जीयमानास्तु लम्बन्ते तुल्यमेव स्वमार्गगाः ॥ \
+> प्राग्गतित्वमतस्तेषां भगणैः प्रत्यहं गतिः । \
+> परिणाहवशाद् भिन्ना तद्वशाद भानि भुञ्जते ॥
 
 *Yukti-dı̄pikā*
 
