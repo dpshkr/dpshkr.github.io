@@ -3,7 +3,8 @@ title: Ancient theories on planetary motion and gravitation
 layout: post
 ---
 
-In this post we will discuss some ancient theories of graviation.
+Planetary motion and the night sky have always amused human beings. 
+Various philosophers and scientists from across the globe have tried to give explanations for astronomical phenomena.
 
 Bhaskaracharya Surya Sinddhanta 
 
@@ -25,3 +26,4 @@ Bhaskaracharya Surya Sinddhanta
 ## References
 
 1. Ramasubramanian, K., and M. S. Sriram. *Tantrasangraha of Nilakantha Somayaji*. 2011.
+2. The Internet Classics Archive: On the Heavens by Aristotle. (n.d.). Retrieved March 8, 2023, from [http://classics.mit.edu/Aristotle/heavens.html] 
