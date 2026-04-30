@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Octave Ribbon Synth</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <style>
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: #121212;
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        .keyboard {
+            display: flex;
+            width: 90vw;
+            height: 200px;
+            border: 2px solid #444;
+            border-radius: 10px;
+            overflow: hidden;
+            cursor: crosshair;
+        }
+
+        .key {
+            flex: 1;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding-bottom: 20px;
+            border-right: 1px solid #333;
+            background: #fff;
+            color: #000;
+            font-weight: bold;
+            user-select: none;
+            pointer-events: none; /* Let the container handle the logic */
+        }
+
+        .key.black {
+            background: #222;
+            color: #fff;
+            flex: 0.7;
+        }
+
+        .instructions {
+            margin-bottom: 20px;
+            font-size: 1.1rem;
+            color: #aaa;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="instructions">Press and slide across the keys to bend the pitch</div>
+    
+    <div class="keyboard" id="ribbon">
+        <div class="key" data-note="C4">C</div>
+        <div class="key black" data-note="C#4">C#</div>
+        <div class="key" data-note="D4">D</div>
+        <div class="key black" data-note="D#4">D#</div>
+        <div class="key" data-note="E4">E</div>
+        <div class="key" data-note="F4">F</div>
+        <div class="key black" data-note="F#4">F#</div>
+        <div class="key" data-note="G4">G</div>
+        <div class="key black" data-note="G#4">G#</div>
+        <div class="key" data-note="A4">A</div>
+        <div class="key black" data-note="A#4">A#</div>
+        <div class="key" data-note="B4">B</div>
+        <div class="key" data-note="C5">C</div>
+    </div>
+
+    <script>
+    /*
+        const synth = new Tone.MonoSynth({
+            oscillator: { type: "square" },
+            envelope: { attack: 0.05, release: 0.5 }
+        }).toDestination();
+*/
+        const synth = new Tone.Synth().toDestination();
+
+        const ribbon = document.getElementById('ribbon');
+        let isPlaying = false;
+
+        const startAudio = async () => {
+            if (Tone.context.state !== 'running') {
+                await Tone.start();
+            }
+        };
+
+        // Logic to find which note corresponds to the horizontal position
+        const getFreqAtPosition = (x) => {
+            const rect = ribbon.getBoundingClientRect();
+            // Normalize X position (0 to 1)
+            let percent = (x - rect.left) / rect.width;
+            percent = Math.max(0, Math.min(1, percent));
+
+            // Map 0-1 to a range of 12 semitones (one octave)
+            // C4 is ~261.63Hz, C5 is ~523.25Hz
+            const startFreq = Tone.Frequency("C4").toFrequency();
+            const endFreq = Tone.Frequency("C5").toFrequency();
+            
+            // Logarithmic mapping for musical pitch
+            // Frequency = Start * 2^(semitones/12)
+            const semitones = percent * 12;
+            return startFreq * Math.pow(2, semitones / 12);
+        };
+
+        ribbon.addEventListener('pointerdown', (e) => {
+            startAudio();
+            isPlaying = true;
+            const freq = getFreqAtPosition(e.clientX);
+            synth.triggerAttack(freq);
+        });
+
+        window.addEventListener('pointermove', (e) => {
+            if (!isPlaying) return;
+            const freq = getFreqAtPosition(e.clientX);
+            // Fast ramp for responsive sliding
+            synth.frequency.rampTo(freq, 0.03);
+        });
+
+        window.addEventListener('pointerup', () => {
+            if (isPlaying) {
+                isPlaying = false;
+                synth.triggerRelease();
+            }
+        });
+    </script>
+</body>
+</html>
