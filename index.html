@@ -1,0 +1,29 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  </head>
+  <body>
+    <h1 class="text-3xl font-bold underline">Hello</h1>
+    <b>Outputs:</b> <select id="selectOut"></select>
+    <div class="h-full flex bg-red-900" id="main">
+      <button id="button" class="flex items-center justify-center flex-grow m-1 h-12 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors" onpointerdown="noteOn('C',1)" onpointerup="noteOff()">C </button>
+      <button class="flex items-center justify-center flex-grow m-1 h-12 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors" onpointerdown="noteOn('C#',2)" onpointerup="noteOff()">C#</button>
+      <button class="flex items-center justify-center flex-grow m-1 h-12 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors" onpointerdown="noteOn('D',3)" onpointerup="noteOff()">D </button>
+      <button class="flex items-center justify-center flex-grow m-1 h-12 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors" onpointerdown="noteOn('D#',4)" onpointerup="noteOff()">D#</button>
+      <button class="flex items-center justify-center flex-grow m-1 h-12 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors" onpointerdown="noteOn('E',5)" onpointerup="noteOff()">E </button>
+      <button class="flex items-center justify-center flex-grow m-1 h-12 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors" onpointerdown="noteOn('F',6)" onpointerup="noteOff()">F </button>
+      <button class="flex items-center justify-center flex-grow m-1 h-12 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors" onpointerdown="noteOn('F#',7)" onpointerup="noteOff()">F#</button>
+      <button class="flex items-center justify-center flex-grow m-1 h-12 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors" onpointerdown="noteOn('G',8)" onpointerup="noteOff()">G </button>
+      <button class="flex items-center justify-center flex-grow m-1 h-12 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors" onpointerdown="noteOn('A',9)" onpointerup="noteOff()">A </button>
+      <button class="flex items-center justify-center flex-grow m-1 h-12 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors" onpointerdown="noteOn('A#',10)" onpointerup="noteOff()">A#</button>
+      <button class="flex items-center justify-center flex-grow m-1 h-12 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors" onpointerdown="noteOn('B11',11)" onpointerup="noteOff()">B </button>
+      <button class="flex items-center justify-center flex-grow m-1 h-12 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors" onpointerdown="noteOn('B#12',12)" onpointerup="noteOff()">B#</button>
+  </div>
+  <p id="message"></p>
+  <p id="pitchbend"></p>
+  <script src="main.js"></script>
+  </body>
+</html>
