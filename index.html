@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Musical Key Grid</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; font-family: sans-serif; background: #1a1917; }
+
+    /* ── Top panel ── */
+    .top-panel {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      background: #111110;
+      border-bottom: 1px solid #2e2c29;
+      flex-wrap: wrap;
+    }
+    .panel-group {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      min-width: 180px;
+      flex: 1;
+    }
+    .panel-group label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #7a756d;
+    }
+    .panel-group select {
+      background: #2a2825;
+      color: #e8e4dc;
+      border: 1px solid #3e3b37;
+      border-radius: 7px;
+      padding: 7px 10px;
+      font-size: 13px;
+      cursor: pointer;
+      outline: none;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%237a756d' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      padding-right: 28px;
+    }
+    .panel-group select:hover { border-color: #5a5650; }
+    .panel-group select:focus { border-color: #85b7eb; }
+
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #444;
+      display: inline-block;
+      margin-right: 6px;
+      flex-shrink: 0;
+    }
+    .status-dot.connected   { background: #4caf7d; box-shadow: 0 0 6px #4caf7d88; }
+    .status-dot.unsupported { background: #e07b54; }
+
+    .midi-status {
+      font-size: 11px;
+      color: #7a756d;
+      display: flex;
+      align-items: center;
+      white-space: nowrap;
+    }
+
+    /* ── Volume slider ── */
+    .volume-group {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      min-width: 140px;
+      flex: 0 0 auto;
+    }
+    .volume-group label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #7a756d;
+      display: flex;
+      justify-content: space-between;
+    }
+    .volume-group label span { color: #b0aa9f; font-weight: 500; letter-spacing: 0; }
+    .volume-row { display: flex; align-items: center; gap: 8px; }
+    .vol-icon { font-size: 14px; line-height: 1; flex-shrink: 0; }
+    input[type=range]#volumeSlider {
+      -webkit-appearance: none;
+      appearance: none;
+      flex: 1;
+      height: 4px;
+      border-radius: 4px;
+      background: linear-gradient(to right, #85b7eb var(--vol, 75%), #3e3b37 var(--vol, 75%));
+      outline: none;
+      cursor: pointer;
+    }
+    input[type=range]#volumeSlider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: #e8e4dc;
+      border: 2px solid #85b7eb;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    input[type=range]#volumeSlider::-webkit-slider-thumb:hover { background: #fff; }
+    input[type=range]#volumeSlider::-moz-range-thumb {
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: #e8e4dc;
+      border: 2px solid #85b7eb;
+      cursor: pointer;
+    }
+
+    /* ── Piano wrap ── */
+    .piano-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 10px;
+      height: calc(100vh - 62px);
+    }
+    .key-grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 5px;
+      flex: 1;
+      min-height: 0;
+    }
+    .key-btn {
+      width: 100%;
+      height: 100%;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.03em;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      text-align: center;
+      transition: background 0.08s, color 0.08s, transform 0.07s;
+      user-select: none;
+      outline: none;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding-bottom: 10px;
+      font-family: sans-serif;
+    }
+    .key-btn.natural {
+      background: #f0ece4;
+      color: #2C2C2A;
+      border: 1px solid #d4cfc7;
+    }
+    .key-btn.sharp {
+      background: #2a2825;
+      color: #c8c3bb;
+      border: 1px solid #111;
+    }
+    .key-btn.natural:hover { background: #e4e0d8; }
+    .key-btn.sharp:hover   { background: #3d3a36; }
+    .key-btn.natural.active { background: #b8d8f8; color: #0c447c; transform: scale(0.97); }
+    .key-btn.sharp.active   { background: #0c2240; color: #85b7eb; transform: scale(0.97); }
+  </style>
+</head>
+<body>
+
+  <!-- Top panel -->
+  <div class="top-panel">
+    <div class="panel-group">
+      <label>🎹 MIDI Output</label>
+      <select id="midiSelect"><option value="">— No MIDI outputs found —</option></select>
+    </div>
+    <div class="panel-group">
+      <label>𝄞  Octave</label>
+      <select id="octaveSelect"></select>
+    </div>
+    <div class="panel-group">
+      <label>🎸 Instrument</label>
+      <select id="instrumentSelect"></select>
+    </div>
+    <div class="panel-group">
+      <label>Rows</label>
+      <select id="rowSelect" onchange="recreateGrid()"></select>
+    </div>
+     <div class="panel-group">
+      <label>Columns</label>
+      <select id="columnSelect" onchange=recreateGrid()></select>
+    </div>
+    <div class="volume-group">
+      <label>🔊 Volume <span id="volValue">75%</span></label>
+      <div class="volume-row">
+        <span class="vol-icon">🔈</span>
+        <input type="range" id="volumeSlider" min="0" max="100" value="75" />
+        <span class="vol-icon">🔊</span>
+      </div>
+    </div>
+    <div class="midi-status">
+      <span class="status-dot" id="midiDot"></span>
+      <span id="midiStatusText">Checking MIDI…</span>
+    </div>
+  </div>
+
+  <!-- Keys -->
+  <div class="piano-wrap" id="root"></div>
+
+  <script>
+    /* ── Instruments ── */
+    const INSTRUMENTS = [
+      { name: 'Acoustic Grand Piano', type: 'sine',     attack: 0.005, decay: 0.3,  sustain: 0.6, release: 1.2, gm: 0  },
+      { name: 'Electric Piano',       type: 'triangle', attack: 0.005, decay: 0.2,  sustain: 0.5, release: 0.8, gm: 4  },
+      { name: 'Organ',                type: 'square',   attack: 0.01,  decay: 0.0,  sustain: 1.0, release: 0.1, gm: 16 },
+      { name: 'Guitar',               type: 'sawtooth', attack: 0.005, decay: 0.4,  sustain: 0.2, release: 0.5, gm: 25 },
+      { name: 'Violin',               type: 'sawtooth', attack: 0.08,  decay: 0.1,  sustain: 0.8, release: 0.4, gm: 40 },
+      { name: 'Flute',                type: 'sine',     attack: 0.06,  decay: 0.05, sustain: 0.9, release: 0.3, gm: 73 },
+      { name: 'Marimba',              type: 'sine',     attack: 0.002, decay: 0.5,  sustain: 0.1, release: 0.3, gm: 12 },
+      { name: 'Synth Lead',           type: 'sawtooth', attack: 0.01,  decay: 0.1,  sustain: 0.9, release: 0.2, gm: 80 },
+      { name: 'Synth Pad',            type: 'triangle', attack: 0.3,   decay: 0.1,  sustain: 0.8, release: 0.8, gm: 88 },
+      { name: 'Bell',                 type: 'sine',     attack: 0.002, decay: 0.8,  sustain: 0.05,release: 1.5, gm: 9  },
+    ];
+
+    const noOfRows = [3,4,5,6];
+    const noOfCols = [8,9,10,11,12];
+    const octaves = [0,1,2,3,4]
+    const synth = new Tone.Synth().toDestination();
+
+    const instrumentSelect = document.getElementById('instrumentSelect');
+    INSTRUMENTS.forEach((inst, i) => {
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = inst.name;
+      instrumentSelect.appendChild(opt);
+    });
+
+    const rowSelect = document.getElementById('rowSelect');
+    noOfRows.forEach((inst, i) => {
+      if (i == 1) {
+        const opt = new Option(inst,inst,false,true);
+        rowSelect.appendChild(opt);
+      }
+      else {
+        const opt = new Option(inst,inst,false,false);
+        rowSelect.appendChild(opt);
+      }
+    });
+
+    const columnSelect = document.getElementById('columnSelect');
+    noOfCols.forEach((inst, i) => {
+      if (i == 4) {
+        const opt = new Option(inst,inst,false,true);
+        columnSelect.append(opt);
+      }
+      else {
+        const opt = new Option(inst,inst,false,false);
+        columnSelect.appendChild(opt);
+      }
+    });
+
+    const octaveSelect = document.getElementById('octaveSelect');
+    octaves.forEach((inst, i) => {
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = inst;
+      octaveSelect.appendChild(opt);
+    });
+    octaveSelect.value='2';
+
+
+    /* ── Volume ── */
+    const volumeSlider = document.getElementById('volumeSlider');
+    const volValue = document.getElementById('volValue');
+    function getVolume() { return parseInt(volumeSlider.value) / 100; }
+    function updateSliderTrack() {
+      const pct = volumeSlider.value + '%';
+      volumeSlider.style.setProperty('--vol', pct);
+      volValue.textContent = volumeSlider.value + '%';
+    }
+    volumeSlider.addEventListener('input', updateSliderTrack);
+    updateSliderTrack();
+
+    /* ── Web Audio ── */
+    let audioCtx = null;
+    function getCtx() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      return audioCtx;
+    }
+    function midiToFreq(midi) { return 440 * Math.pow(2, (midi - 69) / 12); }
+
+    function playNote(midi) {
+      const ctx = getCtx();
+      const inst = INSTRUMENTS[parseInt(instrumentSelect.value) || 0];
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = inst.type;
+      osc.frequency.setValueAtTime(midiToFreq(midi), now);
+      const peak = 0.6 * getVolume();
+      const sus = peak * inst.sustain;
+      const noteEnd = now + inst.attack + inst.decay + 0.5;
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(peak, now + inst.attack);
+      gain.gain.linearRampToValueAtTime(sus, now + inst.attack + inst.decay);
+      gain.gain.setValueAtTime(sus, noteEnd);
+      gain.gain.exponentialRampToValueAtTime(0.001, noteEnd + inst.release);
+      osc.start(now);
+      osc.stop(noteEnd + inst.release + 0.05);
+    }
+
+    /* ── MIDI ── */
+    let midiAccess = null;
+    let midiOutputId = null;
+    const midiSelect = document.getElementById('midiSelect');
+    const midiDot = document.getElementById('midiDot');
+    const midiStatusText = document.getElementById('midiStatusText');
+
+    function populateMidiOutputs() {
+      const prev = midiSelect.value;
+      midiSelect.innerHTML = '';
+      const none = document.createElement('option');
+      none.value = ''; none.textContent = '— Web Audio only —';
+      midiSelect.appendChild(none);
+      const outputs = [...midiAccess.outputs.values()];
+      outputs.forEach(out => {
+        const opt = document.createElement('option');
+        opt.value = out.id;
+        opt.textContent = out.name;
+        if (out.id === prev) opt.selected = true;
+        midiSelect.appendChild(opt);
+      });
+      midiOutputId = midiSelect.value || null;
+      if (outputs.length > 0) {
+        midiDot.className = 'status-dot connected';
+        midiStatusText.textContent = `${outputs.length} MIDI output${outputs.length > 1 ? 's' : ''} available`;
+      } else {
+        midiDot.className = 'status-dot connected';
+        midiStatusText.textContent = 'MIDI ready — using Web Audio';
+      }
+    }
+
+    midiSelect.addEventListener('change', () => {
+      midiOutputId = midiSelect.value || null;
+      midiStatusText.textContent = midiOutputId ? 'MIDI output active' : 'Using Web Audio';
+    });
+
+    function sendMidi(midi) {
+      if (!midiAccess || !midiOutputId) return;
+      const out = midiAccess.outputs.get(midiOutputId);
+      if (!out) return;
+      const inst = INSTRUMENTS[parseInt(instrumentSelect.value) || 0];
+      out.send([0xC0, inst.gm]);
+      out.send([0x90, midi, Math.round(getVolume() * 127)]);
+      setTimeout(() => out.send([0x80, midi, 0]), 800);
+    }
+
+    if (navigator.requestMIDIAccess) {
+      navigator.requestMIDIAccess({ sysex: false }).then(access => {
+        midiAccess = access;
+        populateMidiOutputs();
+        access.onstatechange = populateMidiOutputs;
+      }).catch(() => {
+        midiDot.className = 'status-dot unsupported';
+        midiStatusText.textContent = 'MIDI access denied';
+      });
+    } else {
+      midiDot.className = 'status-dot unsupported';
+      midiStatusText.textContent = 'MIDI not supported in this browser';
+    }
+
+    /* ── Build key grid ── */
+    const rows = [{ root: 48 }, { root: 60 }, { root: 72 }, { root: 84 }];
+    const NOTE_NAMES_C = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+    const OCTAVE_C = [0,0,0,0,0,0,0,0,0,0,0,0];
+    const NOTE_NAMES_G = ['G','G#','A','A#','B','C','C#','D','D#','E','F','F#'];
+    const OCTAVE_G = [0,0,0,0,0,1,1,1,1,1,1,1];
+    const isSharp = n => n.includes('#');
+
+    const startAudio = async () => {
+        if (Tone.context.state !== 'running') {
+            await Tone.start();
+        }
+    };
+
+    window.addEventListener('pointerup', () => {
+          synth.triggerRelease();
+        });
+
+    function onDown() {
+      const octave = parseInt(octaveSelect.value);
+      const note = `${event.currentTarget.dataset.note}${parseInt(event.currentTarget.dataset.octave)+octave+2}`;
+      startAudio();
+      synth.triggerAttack(note);
+    }
+    
+    function pitchBend() {
+      console.log("Hello World");
+    }
+
+    function createGrid(nrows,ncols) {
+      const gridRoot = document.getElementById('root');
+      gridRoot.innerHTML = "";
+      for (let j = 0 ; j < nrows ; j++) {
+        const grid = document.createElement('div');
+        grid.className = 'key-grid';
+        grid.id = `key-grid-${j}`
+        grid.addEventListener('mousemove', (event) => {
+          // Get the div's position relative to the viewport
+          const rect = grid.getBoundingClientRect();
+          const octave = parseInt(octaveSelect.value) + 2;
+          // Subtract the div's left/top position from the mouse's client coordinates
+          let x = (event.clientX - rect.left)/rect.width;
+          x = Math.max(0, Math.min(1, x));
+          let startFreq = 0.0;
+          let endFreq = 0.0;
+          if (j % 2 == 0) {
+            startFreq = Tone.Frequency(`${NOTE_NAMES_C[0]}${OCTAVE_C[0]+octave+Math.trunc(j/2)}`).toFrequency();;
+            endFreq = Tone.Frequency(`${NOTE_NAMES_C[ncols-1]}${OCTAVE_C[ncols-1]+octave+Math.trunc(j/2)}`).toFrequency();
+          }
+          else {
+            startFreq = Tone.Frequency(`${NOTE_NAMES_G[0]}${OCTAVE_G[0]+octave+Math.trunc(j/2)}`).toFrequency();
+            endFreq = Tone.Frequency(`${NOTE_NAMES_G[ncols-1]}${OCTAVE_G[ncols-1]+octave+Math.trunc(j/2)}`).toFrequency();
+          }
+          let freq = startFreq*Math.pow(2,x*(ncols-1)/12)
+          synth.frequency.rampTo(freq, 0.03);
+        });
+        for (let i = 0; i < ncols; i++){
+          const btn = document.createElement('button');
+          if (j % 2 == 0) {
+            btn.textContent = NOTE_NAMES_C[i];
+            btn.className = 'key-btn ' + (isSharp(NOTE_NAMES_C[i]) ? 'sharp' : 'natural');
+            btn.dataset.note = NOTE_NAMES_C[i];
+            btn.dataset.octave = OCTAVE_C[i] + Math.trunc(j /2)
+            btn.addEventListener('pointerdown', onDown);
+          }
+          else {
+            btn.textContent = NOTE_NAMES_G[i];
+            btn.className = 'key-btn ' + (isSharp(NOTE_NAMES_G[i]) ? 'sharp' : 'natural');
+            btn.dataset.note = NOTE_NAMES_G[i];
+            btn.dataset.octave = OCTAVE_G[i] + Math.trunc(j /2)
+            btn.addEventListener('pointerdown', onDown);
+          }
+          grid.appendChild(btn)
+        }
+        grid.style.gridTemplateColumns = `repeat(${ncols}, 1fr)`;
+        gridRoot.appendChild(grid);
+      }
+    }
+
+    function recreateGrid() {
+      const ncols = parseInt(columnSelect.value);
+      const nrows = parseInt(rowSelect.value);
+      createGrid(nrows,ncols);
+    }
+
+    createGrid(4,12);
+    /*
+    const gridRoot = document.getElementById('root');
+    gridRoot.addEventListener('pointermove', e => {
+      console.log(`x: ${e.clientX}, y: ${e.clientY}`);
+    });
+    */
+
+  </script>
+</body>
+</html>
