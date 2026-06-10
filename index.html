@@ -282,9 +282,8 @@
     </div>
 
     <script>
-        // --- NORDIC UART BLE SPECIFICATION CONFIGURATION ---
         const NORDIC_UART_SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
-        const NORDIC_TX_CHARACTERISTIC_UUID = '6e400002-b5a3-f393-e0a9-e50e24dcca9e'; // TX on Microcontroller (We Write To This)
+        const NORDIC_TX_CHARACTERISTIC_UUID = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
 
         let bleDevice = null;
         let txCharacteristic = null;
@@ -304,24 +303,20 @@
 
             try {
                 txt.innerText = "PAIRING...";
-                console.log("Requesting Nordic BLE Device Profile...");
 
                 bleDevice = await navigator.bluetooth.requestDevice({
                     filters: [{ services: [NORDIC_UART_SERVICE_UUID] }]
                 });
 
-                console.log(`Connected to Device: ${bleDevice.name}`);
                 bleDevice.addEventListener('gattserverdisconnected', onDisconnectedFromServer);
 
                 const server = await bleDevice.gatt.connect();
                 const service = await server.getPrimaryService(NORDIC_UART_SERVICE_UUID);
                 txCharacteristic = await service.getCharacteristic(NORDIC_TX_CHARACTERISTIC_UUID);
 
-                // Handshake success
                 isConnected = true;
                 btn.classList.remove('disconnected');
                 txt.innerText = "CONNECTED";
-                console.log("BLE Serial Channel Established successfully.");
             } catch (err) {
                 console.error(`BLE Connection Failed: ${err}`);
                 disconnectBLE();
@@ -343,19 +338,15 @@
             const txt = document.getElementById('connection-text');
             btn.classList.add('disconnected');
             txt.innerText = "DISCONNECTED";
-            console.log("BLE Link offline.");
         }
 
-        // --- ASYNC BINARY SERIALIZER TO HARDWARE ---
         async function sendBleCommand(commandString) {
             if (!isConnected || !txCharacteristic) return;
 
             try {
-                // Appending clean trailing carriage newlines standard for parser interpretation
                 const encoder = new TextEncoder();
                 const dataBuffer = encoder.encode(commandString + "\n");
-
-                await txCharacteristic.writeValueWithoutResponse(dataBuffer);
+                await txCharacteristic.writeValueWithResponse(dataBuffer);
                 console.log(`Sent to BLE: ${commandString}`);
             } catch (err) {
                 console.error(`TX Serialization Drop Error: ${err}`);
@@ -368,18 +359,18 @@
 
             const motionType = button.getAttribute('data-type');
             const axis = button.getAttribute('data-axis');
-            const direction = button.getAttribute('data-dir');
+            const direction = button.getAttribute('data-dir'); // Captures 1 or -1 safely now!
 
             if (motionType === 'step' && eventType === 'start') {
-                // Format e.g., "STEP:Y:1" or "STEP:X:-1"
+                // Sends: "STEP:X:1", "STEP:Y:-1", etc.
                 sendBleCommand(`STEP:${axis}:${direction}`);
             }
             else if (motionType === 'jog') {
                 const speed = button.getAttribute('data-speed').toUpperCase();
                 const activeState = eventType.toUpperCase(); // START or STOP
 
-                // Format e.g., "JOG:START:Y:SLOW" or "JOG:STOP:X:FAST"
-                sendBleCommand(`JOG:${activeState}:${axis}:${speed}`);
+                // Sends: "JOG:START:X:1:SLOW", "JOG:STOP:Y:-1:FAST", etc.
+                sendBleCommand(`JOG:${activeState}:${axis}:${direction}:${speed}`);
             }
         }
 
@@ -393,7 +384,6 @@
             }
         }
 
-        // Initialize event processing layers
         const controlElements = document.querySelectorAll('.btn[data-axis], .sector[data-axis]');
         controlElements.forEach(element => {
             element.addEventListener('touchstart', (e) => {
