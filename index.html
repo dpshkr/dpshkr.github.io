@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Motor Controller</title>
+    <style>
+        :root {
+            --bg-color: #1a1a1a;
+            --panel-bg: #2d2d2d;
+            --text-color: #ffffff;
+            --step-color: #3498db;
+            --jog-color: #e67e22;
+            --active-color: #2ecc71;
+            --connected-color: #2ecc71;
+            --disconnected-color: #e74c3c;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+            box-sizing: border-box;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Top Utility Bar */
+        .top-bar {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            z-index: 10;
+        }
+
+        .action-btn {
+            background: #222;
+            color: #fff;
+            border: 1px solid #444;
+            padding: 6px 18px;
+            border-radius: 18px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            height: 30px;
+            box-sizing: border-box;
+        }
+
+        .connect-btn .indicator-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--connected-color);
+            box-shadow: 0 0 6px var(--connected-color);
+        }
+
+        .connect-btn.disconnected .indicator-dot {
+            background-color: var(--disconnected-color);
+            box-shadow: 0 0 6px var(--disconnected-color);
+        }
+
+        /* Corner Anchoring */
+        .panel {
+            position: absolute;
+            bottom: 12px;
+            background: var(--panel-bg);
+            border-radius: 14px;
+            padding: 12px;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.35);
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            box-sizing: border-box;
+        }
+
+        .step-panel { left: 12px; border-left: 4px solid var(--step-color); }
+        .jog-panel { right: 12px; border-right: 4px solid var(--jog-color); }
+
+        .panel-title {
+            text-align: center;
+            font-weight: bold;
+            margin: 0;
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+        }
+
+        .dpad-row {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .dpad-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .dpad-label {
+            font-size: 0.65rem;
+            margin-bottom: 6px;
+            color: #bbb;
+            font-weight: bold;
+        }
+
+        /* --- VERTICAL Z STACKS --- */
+        .dpad-z-step {
+            display: grid;
+            grid-template-columns: 44px;
+            grid-template-rows: repeat(3, 44px);
+            gap: 4px;
+            background: #161616;
+            padding: 6px;
+            border-radius: 22px;
+        }
+
+        .dpad-z-jog {
+            display: grid;
+            grid-template-columns: 40px;
+            grid-template-rows: repeat(5, 34px);
+            gap: 3px;
+            background: #161616;
+            padding: 6px;
+            border-radius: 18px;
+        }
+
+        /* --- RADIAL / CIRCULAR DPAD ENGINE --- */
+        .radial-dpad {
+            position: relative;
+            background: #161616;
+            border-radius: 50%;
+            overflow: hidden;
+        }
+
+        .step-xy-size { width: 140px; height: 140px; }
+        .jog-xy-size { width: 184px; height: 184px; }
+
+        .sector {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            border: none;
+            background: #3a3a3a;
+            color: #fff;
+            font-weight: bold;
+            font-size: 0.85rem;
+            padding: 0;
+            margin: 0;
+            cursor: pointer;
+            box-sizing: border-box;
+        }
+
+        .center-deadzone {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: #252525;
+            border-radius: 50%;
+            z-index: 5;
+            pointer-events: none;
+        }
+        .step-deadzone { width: 44px; height: 44px; }
+        .jog-deadzone { width: 40px; height: 40px; }
+
+        .sector:active, .sector.triggered {
+            background: var(--active-color) !important;
+            color: #000 !important;
+        }
+
+        /* --- STEP SECTOR GEOMETRY (4 Quarters) --- */
+        .s-up    { clip-path: polygon(50% 50%, 0 0, 100% 0); background: #444; align-items: flex-start; padding-top: 12px; justify-content: center; display: flex; }
+        .s-right { clip-path: polygon(50% 50%, 100% 0, 100% 100%); background: #4c4c4c; justify-content: flex-end; padding-right: 12px; align-items: center; display: flex; }
+        .s-down  { clip-path: polygon(50% 50%, 100% 100%, 0 100%); background: #444; align-items: flex-end; padding-bottom: 12px; justify-content: center; display: flex; }
+        .s-left  { clip-path: polygon(50% 50%, 0 100%, 0 0); background: #4c4c4c; justify-content: flex-start; padding-left: 12px; align-items: center; display: flex; }
+
+        /* --- JOG SECTOR GEOMETRY (Concentric Rings) --- */
+        .j-slow { z-index: 2; }
+        .js-up    { clip-path: polygon(50% 50%, 15% 15%, 85% 15%); background: #444; align-items: flex-start; padding-top: 32px; justify-content: center; display: flex;}
+        .js-right { clip-path: polygon(50% 50%, 85% 15%, 85% 85%); background: #4c4c4c; justify-content: flex-end; padding-right: 32px; align-items: center; display: flex;}
+        .js-down  { clip-path: polygon(50% 50%, 85% 85%, 15% 85%); background: #444; align-items: flex-end; padding-bottom: 32px; justify-content: center; display: flex;}
+        .js-left  { clip-path: polygon(50% 50%, 15% 85%, 15% 15%); background: #4c4c4c; justify-content: flex-start; padding-left: 32px; align-items: center; display: flex;}
+
+        .j-fast { z-index: 1; color: #ffb473; font-size: 0.75rem; }
+        .jf-up    { clip-path: polygon(50% 50%, 0 0, 100% 0); background: #333; align-items: flex-start; padding-top: 10px; justify-content: center; display: flex;}
+        .jf-right { clip-path: polygon(50% 50%, 100% 0, 100% 100%); background: #3a3a3a; justify-content: flex-end; padding-right: 10px; align-items: center; display: flex;}
+        .jf-down  { clip-path: polygon(50% 50%, 100% 100%, 0 100%); background: #333; align-items: flex-end; padding-bottom: 10px; justify-content: center; display: flex;}
+        .jf-left  { clip-path: polygon(50% 50%, 0 100%, 0 0); background: #3a3a3a; justify-content: flex-start; padding-left: 10px; align-items: center; display: flex;}
+
+        /* Standardized button pill properties */
+        .btn {
+            background: #444; color: white; border: none; border-radius: 6px;
+            font-weight: bold; font-size: 0.85rem; display: flex;
+            justify-content: center; align-items: center; box-shadow: 0 2px 0 #111;
+        }
+        .btn.fast { background: #4e4e4e; color: #ffb473; font-size: 0.75rem; }
+        .btn:active, .btn.triggered { background: var(--active-color) !important; color: #000 !important; transform: translateY(2px); box-shadow: none; }
+        .b-zup { grid-row: 1; } .b-zdown { grid-row: 3; } .b-zspace { grid-row: 2; background: #222; box-shadow: none; pointer-events: none;}
+    </style>
+</head>
+<body>
+
+    <div class="top-bar">
+        <button class="action-btn connect-btn disconnected" id="connection-toggle" onclick="handleConnectionClick()">
+            <div class="indicator-dot"></div>
+            <span id="connection-text">DISCONNECTED</span>
+        </button>
+
+        <button class="action-btn fullscreen-btn" id="fullscreen-toggle" onclick="toggleFullscreen()">
+            <span>⛶ FULLSCREEN</span>
+        </button>
+    </div>
+
+    <div class="panel step-panel">
+        <div class="panel-title" style="color: var(--step-color);">STEP MOTION</div>
+        <div class="dpad-row">
+            <div class="dpad-wrapper">
+                <div class="dpad-label">X / Y Wheel</div>
+                <div class="radial-dpad step-xy-size">
+                    <button class="sector s-up" data-type="step" data-axis="Y" data-dir="1">Y+</button>
+                    <button class="sector s-right" data-type="step" data-axis="X" data-dir="1">X+</button>
+                    <button class="sector s-down" data-type="step" data-axis="Y" data-dir="-1">Y-</button>
+                    <button class="sector s-left" data-type="step" data-axis="X" data-dir="-1">X-</button>
+                    <div class="center-deadzone step-deadzone"></div>
+                </div>
+            </div>
+            <div class="dpad-wrapper">
+                <div class="dpad-label">Z</div>
+                <div class="dpad-z-step">
+                    <button class="btn b-zup" data-type="step" data-axis="Z" data-dir="1">Z+</button>
+                    <div class="btn b-zspace"></div>
+                    <button class="btn b-zdown" data-type="step" data-axis="Z" data-dir="-1">Z-</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel jog-panel">
+        <div class="panel-title" style="color: var(--jog-color);">JOG MOTION</div>
+        <div class="dpad-row">
+            <div class="dpad-wrapper">
+                <div class="dpad-label">X / Y Wheel (Inner: Slow | Outer: Fast)</div>
+                <div class="radial-dpad jog-xy-size">
+                    <button class="sector j-slow js-up" data-type="jog" data-speed="Slow" data-axis="Y" data-dir="1">Y^</button>
+                    <button class="sector j-slow js-right" data-type="jog" data-speed="Slow" data-axis="X" data-dir="1">&gt;</button>
+                    <button class="sector j-slow js-down" data-type="jog" data-speed="Slow" data-axis="Y" data-dir="-1">Yv</button>
+                    <button class="sector j-slow js-left" data-type="jog" data-speed="Slow" data-axis="X" data-dir="-1">&lt;</button>
+
+                    <button class="sector j-fast jf-up" data-type="jog" data-speed="Fast" data-axis="Y" data-dir="1">Y^^</button>
+                    <button class="sector j-fast jf-right" data-type="jog" data-speed="Fast" data-axis="X" data-dir="1">&gt;&gt;</button>
+                    <button class="sector j-fast jf-down" data-type="jog" data-speed="Fast" data-axis="Y" data-dir="-1">Yvv</button>
+                    <button class="sector j-fast jf-left" data-type="jog" data-speed="Fast" data-axis="X" data-dir="-1">&lt;&lt;</button>
+
+                    <div class="center-deadzone jog-deadzone"></div>
+                </div>
+            </div>
+            <div class="dpad-wrapper">
+                <div class="dpad-label">Z</div>
+                <div class="dpad-z-jog">
+                    <button class="btn fast" data-type="jog" data-speed="Fast" data-axis="Z" data-dir="1">Z^^</button>
+                    <button class="btn" data-type="jog" data-speed="Slow" data-axis="Z" data-dir="1">Z^</button>
+                    <div style="background: #222; pointer-events: none;"></div>
+                    <button class="btn" data-type="jog" data-speed="Slow" data-axis="Z" data-dir="-1">Zv</button>
+                    <button class="btn fast" data-type="jog" data-speed="Fast" data-axis="Z" data-dir="-1">Zvv</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- NORDIC UART BLE SPECIFICATION CONFIGURATION ---
+        const NORDIC_UART_SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+        const NORDIC_TX_CHARACTERISTIC_UUID = '6e400002-b5a3-f393-e0a9-e50e24dcca9e'; // TX on Microcontroller (We Write To This)
+
+        let bleDevice = null;
+        let txCharacteristic = null;
+        let isConnected = false;
+
+        async function handleConnectionClick() {
+            if (!isConnected) {
+                await connectBLE();
+            } else {
+                disconnectBLE();
+            }
+        }
+
+        async function connectBLE() {
+            const btn = document.getElementById('connection-toggle');
+            const txt = document.getElementById('connection-text');
+
+            try {
+                txt.innerText = "PAIRING...";
+                console.log("Requesting Nordic BLE Device Profile...");
+
+                bleDevice = await navigator.bluetooth.requestDevice({
+                    filters: [{ services: [NORDIC_UART_SERVICE_UUID] }]
+                });
+
+                console.log(`Connected to Device: ${bleDevice.name}`);
+                bleDevice.addEventListener('gattserverdisconnected', onDisconnectedFromServer);
+
+                const server = await bleDevice.gatt.connect();
+                const service = await server.getPrimaryService(NORDIC_UART_SERVICE_UUID);
+                txCharacteristic = await service.getCharacteristic(NORDIC_TX_CHARACTERISTIC_UUID);
+
+                // Handshake success
+                isConnected = true;
+                btn.classList.remove('disconnected');
+                txt.innerText = "CONNECTED";
+                console.log("BLE Serial Channel Established successfully.");
+            } catch (err) {
+                console.error(`BLE Connection Failed: ${err}`);
+                disconnectBLE();
+            }
+        }
+
+        function disconnectBLE() {
+            if (bleDevice && bleDevice.gatt.connected) {
+                bleDevice.gatt.disconnect();
+            }
+            onDisconnectedFromServer();
+        }
+
+        function onDisconnectedFromServer() {
+            isConnected = false;
+            txCharacteristic = null;
+            bleDevice = null;
+            const btn = document.getElementById('connection-toggle');
+            const txt = document.getElementById('connection-text');
+            btn.classList.add('disconnected');
+            txt.innerText = "DISCONNECTED";
+            console.log("BLE Link offline.");
+        }
+
+        // --- ASYNC BINARY SERIALIZER TO HARDWARE ---
+        async function sendBleCommand(commandString) {
+            if (!isConnected || !txCharacteristic) return;
+
+            try {
+                // Appending clean trailing carriage newlines standard for parser interpretation
+                const encoder = new TextEncoder();
+                const dataBuffer = encoder.encode(commandString + "\n");
+
+                await txCharacteristic.writeValueWithoutResponse(dataBuffer);
+                console.log(`Sent to BLE: ${commandString}`);
+            } catch (err) {
+                console.error(`TX Serialization Drop Error: ${err}`);
+            }
+        }
+
+        // --- ACTION TRANSLATION DRIVER ---
+        function handlePress(button, eventType) {
+            if (!isConnected) return;
+
+            const motionType = button.getAttribute('data-type');
+            const axis = button.getAttribute('data-axis');
+            const direction = button.getAttribute('data-dir');
+
+            if (motionType === 'step' && eventType === 'start') {
+                // Format e.g., "STEP:Y:1" or "STEP:X:-1"
+                sendBleCommand(`STEP:${axis}:${direction}`);
+            }
+            else if (motionType === 'jog') {
+                const speed = button.getAttribute('data-speed').toUpperCase();
+                const activeState = eventType.toUpperCase(); // START or STOP
+
+                // Format e.g., "JOG:START:Y:SLOW" or "JOG:STOP:X:FAST"
+                sendBleCommand(`JOG:${activeState}:${axis}:${speed}`);
+            }
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.log(`Fullscreen error: ${err.message}`);
+                });
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        // Initialize event processing layers
+        const controlElements = document.querySelectorAll('.btn[data-axis], .sector[data-axis]');
+        controlElements.forEach(element => {
+            element.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                if (!isConnected) return;
+                element.classList.add('triggered');
+                handlePress(element, 'start');
+            });
+
+            element.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                element.classList.remove('triggered');
+                handlePress(element, 'stop');
+            });
+
+            element.addEventListener('mousedown', () => { if (isConnected) handlePress(element, 'start'); });
+            element.addEventListener('mouseup', () => { if (isConnected) handlePress(element, 'stop'); });
+            element.addEventListener('mouseleave', () => {
+                if(element.classList.contains('triggered')) {
+                     element.classList.remove('triggered');
+                     handlePress(element, 'stop');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
